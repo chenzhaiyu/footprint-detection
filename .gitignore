@@ -1,0 +1,8 @@
+.DS_STORE
+build/
+notebooks/
+models/
+images/
+.idea/
+__pycache__
+
