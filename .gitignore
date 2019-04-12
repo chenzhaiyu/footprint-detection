@@ -5,4 +5,6 @@ models/
 images/
 .idea/
 __pycache__
-
+_*
+pycocotools/
+.swp
