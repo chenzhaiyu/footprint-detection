@@ -1,10 +1,15 @@
 .DS_STORE
 build/
 notebooks/
-models/
 images/
 .idea/
 __pycache__
-_*
+_deprecated*
 pycocotools/
 .swp
+_todo_*
+_res/
+*.h5
+*.pth
+results/
+images/
