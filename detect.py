@@ -37,42 +37,27 @@ USE_MATTING = True
 SAVE_PATCH = False
 SAVE_TRIMAP = False
 BBOX_PADDING = False
+DILATION = True
+EROSION = True
 matting_strategies = ["multi_shots", "one_shot"]
 matting_methods = ["knn", "closed_form", "grabcut_skeleton", "grabcut_foreground"]
+MARGIN = 4
+dilation_kernel = np.ones((7, 7), np.uint8)
 
-if USE_MATTING:
-    matting_strategy = matting_strategies[0]
-    matting_method = matting_methods[0]
-    DILATION = True
-    EROSION = True
-
-else:
-    matting_strategy = None
-    matting_methods = None
-    EROSION = None
-    matting_method = None
+matting_strategy = matting_strategies[1]
+matting_method = matting_methods[0]
 
 # Directory of images to run detection on
-IMAGE_SRC_DIR = "/Users/czy/Dataset/WHU Building Dataset/data/test/sub_image/"
+IMAGE_SRC_DIR = "/Users/czy/Dataset/WHU Building Dataset/data/test/sub_images/"
 
-if SAVE_PATCH:
-    # Image patch save path
-    PATCH_SAVE_DIR = "images/patches/"
+# Image patch save dir
+PATCH_SAVE_DIR = "images/patches/"
 
-else:
-    PATCH_SAVE_DIR = None
-
-if SAVE_TRIMAP:
-    TRIMAP_SAVE_DIR = "images/trimaps/"
-
-else:
-    TRIMAP_SAVE_DIR = None
-
-if BBOX_PADDING:
-    MARGIN = 4
+# Trimap save dir
+TRIMAP_SAVE_DIR = "images/trimaps/"
 
 # Prediction result save path
-OUTPUT_DIR = "images/trimaps/"
+OUTPUT_DIR = "images/results/"
 
 
 class InferenceConfig(Config):
@@ -100,11 +85,6 @@ file_names = next(os.walk(IMAGE_SRC_DIR))[2]
 # Set counter and bug counter
 image_count = 0
 output_count = 0
-
-if USE_MATTING:
-    dilation_kernel = np.ones((7, 7), np.uint8)
-else:
-    dilation_kernel = None
 
 # Run predictions
 for file_name in file_names:
@@ -147,18 +127,18 @@ for file_name in file_names:
     if USE_MATTING and matting_strategy == "multi_shots":
         for i in range(0, N):
 
-            rcnnmask = masks[:, :, i]
+            mask = masks[:, :, i]
 
             y1, x1, y2, x2 = boxes[i]
 
             if BBOX_PADDING:
                 if y1 >= MARGIN:
                     y1 = y1 - MARGIN
-                if y2 < rcnnmask.shape[0] - MARGIN:
+                if y2 < mask.shape[0] - MARGIN:
                     y2 = y2 + MARGIN
                 if x1 >= MARGIN:
                     x1 = x1 - MARGIN
-                if x2 < rcnnmask.shape[0] - MARGIN:
+                if x2 < mask.shape[0] - MARGIN:
                     x2 = x2 + MARGIN
 
             patch = image[y1:y2, x1:x2]
@@ -199,14 +179,50 @@ for file_name in file_names:
 
             else:
                 UserWarning("Unknown matting method parameter")
+            # TODO: save result
 
     elif USE_MATTING and matting_strategy == "one_shot":
-        # TODO: finish one_shot matting strategy
+
+        overlay_mask = np.zeros((masks.shape[:-1]), dtype=bool)
+        for i in range(masks.shape[-1]):
+            overlay_mask += masks[:, :, i]
+
+        # Process the overlay mask
+        # TODO: further erode the mask or not
         pass
+        # dilate the mask to generate trimap
+        dilation = cv2.dilate(overlay_mask, dilation_kernel, iterations=1)
+
+        # paint the mask as trimap, add halved original to halved dilated
+        trimap = np.where((overlay_mask == 255), 127, 0) + np.where((dilation == 255), 128, 0)
+
+        if SAVE_TRIMAP:
+            # save trimap
+            plt.imsave(TRIMAP_SAVE_DIR + str(output_count) + ".png", trimap, cmap=plt.cm.gray)
+
+        # TODO: implement different mattings
+        if matting_method == "closed_form":
+            pass
+
+        elif matting_method == "knn":
+            pass
+
+        elif matting_method == "grabcut_skeleton":
+            pass
+
+        elif matting_method == "grabcut_mask":
+            pass
+
+        else:
+            UserWarning("Unknown matting method parameter")
+        # TODO: save result
 
     else:
-        # TODO: finish no-matting case
-        pass
+        overlay_mask = np.zeros((masks.shape[:-1]), dtype=bool)
+        for i in range(masks.shape[-1]):
+            overlay_mask += masks[:, :, i]
+        cv2.imwrite(OUTPUT_DIR + str(output_count) + ".png", overlay_mask)
+
 
 print("------------All Done!------------")
 
