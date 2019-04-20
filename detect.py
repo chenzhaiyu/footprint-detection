@@ -22,6 +22,8 @@ from mrcnn import utils
 from mrcnn.config import Config
 import mrcnn.model as modellib
 
+from matting.grabcut import grabcut
+
 
 # Directory to save logs and trained model
 MODEL_DIR = os.path.join(ROOT_DIR, "logs")
@@ -44,8 +46,8 @@ matting_methods = ["knn", "closed_form", "grabcut_skeleton", "grabcut_foreground
 MARGIN = 4
 dilation_kernel = np.ones((7, 7), np.uint8)
 
-matting_strategy = matting_strategies[1]
-matting_method = matting_methods[0]
+matting_strategy = matting_strategies[0]
+matting_method = matting_methods[2]
 
 # Directory of images to run detection on
 IMAGE_SRC_DIR = "/Users/czy/Dataset/WHU Building Dataset/data/test/sub_images/"
@@ -125,6 +127,7 @@ for file_name in file_names:
         continue
 
     if USE_MATTING and matting_strategy == "multi_shots":
+        overlay_mask = np.zeros((masks.shape[:-1]), dtype="uint8")
         for i in range(0, N):
 
             mask = masks[:, :, i]
@@ -145,8 +148,8 @@ for file_name in file_names:
 
             output_count = output_count + 1
 
-            # patch mask
-            patch_mask = 255 * masks[y1:y2, x1:x2, i].astype("uint8")
+            # patch mask (0 or 1)
+            patch_mask = masks[y1:y2, x1:x2, i].astype("uint8")
 
             # TODO: further erode the mask or not
             pass
@@ -154,7 +157,7 @@ for file_name in file_names:
             dilation = cv2.dilate(patch_mask, dilation_kernel, iterations=1)
 
             # paint the mask as trimap, add halved original to halved dilated
-            trimap = np.where((patch_mask == 255), 127, 0) + np.where((dilation == 255), 128, 0)
+            trimap = np.where((patch_mask == 1), 127, 0) + np.where((dilation == 1), 128, 0)
 
             if SAVE_PATCH:
                 # save patches
@@ -165,6 +168,7 @@ for file_name in file_names:
                 plt.imsave(TRIMAP_SAVE_DIR + str(output_count) + ".png", trimap, cmap=plt.cm.gray)
 
             # TODO: implement different mattings
+            patch_result = None
             if matting_method == "closed_form":
                 pass
 
@@ -172,20 +176,26 @@ for file_name in file_names:
                 pass
 
             elif matting_method == "grabcut_skeleton":
-                pass
+                patch_result = grabcut(patch, patch_mask, mode="skeleton")
 
             elif matting_method == "grabcut_mask":
-                pass
+                patch_result = grabcut(patch, patch_mask, mode="mask")
 
             else:
                 UserWarning("Unknown matting method parameter")
-            # TODO: save result
+
+            # TODO: combine multiple results into one image (overlay_mask)
+            overlay_mask[y1:y2, x1:x2] = patch_result
+
+        cv2.imwrite(OUTPUT_DIR + str(image_count) + ".png", overlay_mask)
 
     elif USE_MATTING and matting_strategy == "one_shot":
 
         overlay_mask = np.zeros((masks.shape[:-1]), dtype=bool)
         for i in range(masks.shape[-1]):
             overlay_mask += masks[:, :, i]
+
+        overlay_mask = overlay_mask.astype("uint8")
 
         # Process the overlay mask
         # TODO: further erode the mask or not
@@ -198,7 +208,7 @@ for file_name in file_names:
 
         if SAVE_TRIMAP:
             # save trimap
-            plt.imsave(TRIMAP_SAVE_DIR + str(output_count) + ".png", trimap, cmap=plt.cm.gray)
+            plt.imsave(TRIMAP_SAVE_DIR + str(image_count) + ".png", trimap, cmap=plt.cm.gray)
 
         # TODO: implement different mattings
         if matting_method == "closed_form":
@@ -208,20 +218,22 @@ for file_name in file_names:
             pass
 
         elif matting_method == "grabcut_skeleton":
-            pass
+            result = grabcut(image, overlay_mask, mode="skeleton")
 
         elif matting_method == "grabcut_mask":
-            pass
+            result = grabcut(image, overlay_mask, mode="mask")
 
         else:
             UserWarning("Unknown matting method parameter")
-        # TODO: save result
+
+        cv2.imwrite(OUTPUT_DIR + str(image_count) + ".png", result)
 
     else:
+
         overlay_mask = np.zeros((masks.shape[:-1]), dtype=bool)
         for i in range(masks.shape[-1]):
             overlay_mask += masks[:, :, i]
-        cv2.imwrite(OUTPUT_DIR + str(output_count) + ".png", overlay_mask)
+        cv2.imwrite(OUTPUT_DIR + str(image_count) + ".png", overlay_mask)
 
 
 print("------------All Done!------------")
