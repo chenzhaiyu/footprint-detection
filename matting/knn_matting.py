@@ -3,6 +3,12 @@ import sklearn.neighbors
 import scipy.sparse
 import warnings
 import cv2
+import matplotlib
+import os
+
+matplotlib.use('TkAgg')
+import matplotlib.pyplot as plt
+import scipy.misc
 
 nn = 10
 
@@ -45,20 +51,12 @@ def knn_matte(img, trimap, mylambda=100):
     return alpha
 
 
-def main():
-    img = scipy.misc.imread('donkey.png')[:,:,:3]
-    trimap = scipy.misc.imread('donkeyTrimap.png')[:,:,:3]
+if __name__ == '__main__':
+    os.chdir("/Users/czy/Projects/Pycharm/BuildingFinder")
+    img = scipy.misc.imread('images/knn_matting/donkey.png')
+    trimap = scipy.misc.imread('images/knn_matting/donkeyTrimap.png')
     alpha = knn_matte(img, trimap)
-    # scipy.misc.imsave('donkeyAlpha.png', alpha)
-    cv2.imwrite("donkeyAlpha.png", alpha * 255.0)
+    cv2.imwrite("images/knn_matting/donkeyAlpha.png", alpha * 255.0)
     plt.title('Alpha Matte')
     plt.imshow(alpha, cmap='gray')
     plt.show()
-
-if __name__ == '__main__':
-    # import matplotlib.pyplot as plt
-    import matplotlib
-    matplotlib.use('TkAgg')
-    import matplotlib.pyplot as plt
-    import scipy.misc
-    main()

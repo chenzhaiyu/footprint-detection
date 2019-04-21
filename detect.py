@@ -23,7 +23,7 @@ from mrcnn.config import Config
 import mrcnn.model as modellib
 
 from matting.grabcut import grabcut
-
+from matting.knn_matting import knn_matte
 
 # Directory to save logs and trained model
 MODEL_DIR = os.path.join(ROOT_DIR, "logs")
@@ -44,10 +44,11 @@ EROSION = True
 matting_strategies = ["multi_shots", "one_shot"]
 matting_methods = ["knn", "closed_form", "grabcut_skeleton", "grabcut_foreground"]
 MARGIN = 4
+ALPHA_TO_MASK_THRESHOLD = 0.8
 dilation_kernel = np.ones((7, 7), np.uint8)
 
 matting_strategy = matting_strategies[0]
-matting_method = matting_methods[2]
+matting_method = matting_methods[0]
 
 # Directory of images to run detection on
 IMAGE_SRC_DIR = "/Users/czy/Dataset/WHU Building Dataset/data/test/sub_images/"
@@ -148,24 +149,28 @@ for file_name in file_names:
 
             output_count = output_count + 1
 
-            # patch mask (0 or 1)
+            # Patch mask (0 or 1)
             patch_mask = masks[y1:y2, x1:x2, i].astype("uint8")
 
             # TODO: further erode the mask or not
             pass
-            # dilate the mask to generate trimap
-            dilation = cv2.dilate(patch_mask, dilation_kernel, iterations=1)
+            # Dilate the mask to generate trimap
+            patch_dilation = cv2.dilate(patch_mask, dilation_kernel, iterations=1)
 
-            # paint the mask as trimap, add halved original to halved dilated
-            trimap = np.where((patch_mask == 1), 127, 0) + np.where((dilation == 1), 128, 0)
+            # Paint the mask as trimap, add halved original to halved dilated
+            _patch_trimap = np.where((patch_mask == 1), 127, 0) + np.where((patch_dilation == 1), 128, 0)
+
+            # Turn 1-chanel to 3-chanel
+            # TODO: not work
+            patch_trimap = np.concatenate((_patch_trimap, _patch_trimap, _patch_trimap), axis=1)
 
             if SAVE_PATCH:
-                # save patches
+                # Save patches
                 plt.imsave(PATCH_SAVE_DIR + str(output_count) + ".png", patch, cmap=plt.cm.gray)
 
             if SAVE_TRIMAP:
-                # save trimap
-                plt.imsave(TRIMAP_SAVE_DIR + str(output_count) + ".png", trimap, cmap=plt.cm.gray)
+                # Save trimap
+                plt.imsave(TRIMAP_SAVE_DIR + str(output_count) + ".png", patch_trimap, cmap=plt.cm.gray)
 
             # TODO: implement different mattings
             patch_result = None
@@ -173,7 +178,9 @@ for file_name in file_names:
                 pass
 
             elif matting_method == "knn":
-                pass
+                _patch_result = knn_matte(patch, patch_trimap)
+                patch_result = (_patch_result >= ALPHA_TO_MASK_THRESHOLD).astype("uint8") * 255
+                print(patch_result)
 
             elif matting_method == "grabcut_skeleton":
                 patch_result = grabcut(patch, patch_mask, mode="skeleton")
