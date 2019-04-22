@@ -49,7 +49,7 @@ MARGIN = 4
 ALPHA_TO_MASK_THRESHOLD = 0.8
 dilation_kernel = np.ones((7, 7), np.uint8)
 
-matting_strategy = matting_strategies[1]
+matting_strategy = matting_strategies[0]
 matting_method = matting_methods[1]
 
 # Directory of images to run detection on
@@ -174,7 +174,13 @@ for file_name in file_names:
             # TODO: implement more mattings
             patch_result = None
             if matting_method == "closed_form":
-                _patch_result = closed_form_matting_with_trimap(patch, _patch_trimap)
+                try:
+                    _patch_result = closed_form_matting_with_trimap(patch, _patch_trimap)
+                except:
+                    # TODO: specify exception clause
+                    print("closed_form matting encountered error!")
+                    continue  # Skip this patch
+
                 patch_result = (_patch_result >= ALPHA_TO_MASK_THRESHOLD).astype("uint8") * 255
 
             elif matting_method == "knn":
