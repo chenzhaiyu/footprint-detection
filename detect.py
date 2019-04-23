@@ -47,7 +47,11 @@ matting_strategies = ["multi_shots", "one_shot"]
 matting_methods = ["knn", "closed_form", "grabcut_skeleton", "grabcut_foreground"]
 MARGIN = 4
 ALPHA_TO_MASK_THRESHOLD = 0.8
-dilation_kernel = np.ones((7, 7), np.uint8)
+EROSION_KERNEL = np.ones((7, 7), np.uint8)
+DILATION_KERNEL = np.ones((7, 7), np.uint8)
+EROSION_ITERATIONS = 1
+DILATION_ITERATIONS = 3
+
 
 matting_strategy = matting_strategies[0]
 matting_method = matting_methods[1]
@@ -156,13 +160,12 @@ for file_name in file_names:
             # Patch mask (0 or 1)
             patch_mask = masks[y1:y2, x1:x2, i].astype("uint8")
 
-            # TODO: further erode the mask or not
-            pass
+            patch_eroded = cv2.erode(patch_mask, EROSION_KERNEL, iterations=EROSION_ITERATIONS)
             # Dilate the mask to generate trimap
-            patch_dilation = cv2.dilate(patch_mask, dilation_kernel, iterations=1)
+            patch_dilated = cv2.dilate(patch_mask, DILATION_KERNEL, iterations=DILATION_ITERATIONS)
 
             # Paint the mask as trimap, add halved original to halved dilated
-            _patch_trimap = (np.where((patch_mask == 1), 127, 0) + np.where((patch_dilation == 1), 128, 0)).astype("uint8")
+            _patch_trimap = (np.where((patch_eroded == 1), 127, 0) + np.where((patch_dilated == 1), 128, 0)).astype("uint8")
 
             # Turn 1-chanel to 3-chanel
             patch_trimap = cv2.cvtColor(_patch_trimap, cv2.COLOR_GRAY2BGR)
@@ -217,13 +220,13 @@ for file_name in file_names:
         overlay_mask = overlay_mask.astype("uint8")
 
         # Process the overlay mask
-        # TODO: further erode the mask or not
-        pass
+        eroded = cv2.erode(overlay_mask, EROSION_KERNEL, iterations=EROSION_ITERATIONS)
+
         # dilate the mask to generate trimap
-        dilation = cv2.dilate(overlay_mask, dilation_kernel, iterations=1)
+        dilated = cv2.dilate(overlay_mask, DILATION_KERNEL, iterations=DILATION_ITERATIONS)
 
         # paint the mask as trimap, add halved original to halved dilated
-        _trimap = (np.where((overlay_mask == 1), 127, 0) + np.where((dilation == 1), 128, 0)).astype("uint8")
+        _trimap = (np.where((eroded == 1), 127, 0) + np.where((dilated == 1), 128, 0)).astype("uint8")
 
         # Turn 1-chanel to 3-chanel
         trimap = cv2.cvtColor(_trimap, cv2.COLOR_GRAY2BGR)
