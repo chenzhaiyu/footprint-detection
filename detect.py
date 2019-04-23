@@ -49,9 +49,9 @@ MARGIN = 4
 ALPHA_TO_MASK_THRESHOLD = 0.8
 EROSION_KERNEL = np.ones((7, 7), np.uint8)
 DILATION_KERNEL = np.ones((7, 7), np.uint8)
-EROSION_ITERATIONS = 1
-DILATION_ITERATIONS = 2
-MASK_RCNN_CONFIDENCE = 0.9
+EROSION_ITERATIONS = 0
+DILATION_ITERATIONS = 1
+MASK_RCNN_CONFIDENCE = 0.95
 
 matting_strategy = matting_strategies[0]
 matting_method = matting_methods[1]
@@ -159,7 +159,10 @@ for file_name in file_names:
             # Patch mask (0 or 1)
             patch_mask = masks[y1:y2, x1:x2, i].astype("uint8")
 
-            patch_eroded = cv2.erode(patch_mask, EROSION_KERNEL, iterations=EROSION_ITERATIONS)
+            if EROSION_ITERATIONS != 0:
+                patch_eroded = cv2.erode(patch_mask, EROSION_KERNEL, iterations=EROSION_ITERATIONS)
+            else:
+                patch_eroded = patch_mask
             # Dilate the mask to generate trimap
             patch_dilated = cv2.dilate(patch_mask, DILATION_KERNEL, iterations=DILATION_ITERATIONS)
 
@@ -200,7 +203,9 @@ for file_name in file_names:
             else:
                 UserWarning("Unknown matting method parameter")
 
-            overlay_mask[y1:y2, x1:x2] = patch_result
+            # Don't ever blacken a white pixel
+            overlay_mask[y1:y2, x1:x2] = np.where((patch_result == 255) | (overlay_mask[y1:y2, x1:x2] == 255), 255, 0)
+            # TODO: change fuse strategy for overlay trimap. It would not influence the final mask.
             overlay_trimap[y1:y2, x1:x2] = _patch_trimap
 
         if SAVE_TRIMAP:
@@ -218,8 +223,11 @@ for file_name in file_names:
 
         overlay_mask = overlay_mask.astype("uint8")
 
-        # Process the overlay mask
-        eroded = cv2.erode(overlay_mask, EROSION_KERNEL, iterations=EROSION_ITERATIONS)
+        if EROSION_ITERATIONS != 0:
+            # Process the overlay mask
+            eroded = cv2.erode(overlay_mask, EROSION_KERNEL, iterations=EROSION_ITERATIONS)
+        else:
+            eroded = overlay_mask
 
         # dilate the mask to generate trimap
         dilated = cv2.dilate(overlay_mask, DILATION_KERNEL, iterations=DILATION_ITERATIONS)
