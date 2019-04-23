@@ -50,8 +50,8 @@ ALPHA_TO_MASK_THRESHOLD = 0.8
 EROSION_KERNEL = np.ones((7, 7), np.uint8)
 DILATION_KERNEL = np.ones((7, 7), np.uint8)
 EROSION_ITERATIONS = 1
-DILATION_ITERATIONS = 3
-
+DILATION_ITERATIONS = 2
+MASK_RCNN_CONFIDENCE = 0.9
 
 matting_strategy = matting_strategies[0]
 matting_method = matting_methods[1]
@@ -114,7 +114,7 @@ for file_name in file_names:
     image = cv2.imread(os.path.join(IMAGE_SRC_DIR, file_name))
 
     # Run detection
-    results = model.detect([image], verbose=0)
+    results = model.detect([image], mask_confidence=MASK_RCNN_CONFIDENCE, verbose=0)
 
     # Visualize results
     r = results[0]
@@ -123,7 +123,6 @@ for file_name in file_names:
     N = results[0]['rois'].shape[0]
 
     # Masks with 90% or higher confidence
-    # TODO: tune the confidence parameter
     masks = results[0]['masks']
     # probs = results[0]['probs']
 

@@ -2415,7 +2415,8 @@ class MaskRCNN():
         return molded_images, image_metas, windows
 
     def unmold_detections(self, detections, mrcnn_mask, original_image_shape,
-                          image_shape, window):
+                          image_shape, window, mask_confidence):
+        # Added mask_confidence parameter by Zhaiyu Chen
         """Reformats the detections of one image from the format of the neural
         network output to a format suitable for use in the rest of the
         application.
@@ -2473,7 +2474,7 @@ class MaskRCNN():
         full_probs = []
         for i in range(N):
             # Convert neural network mask to full size mask
-            full_mask, full_prob = utils.unmold_mask(masks[i], boxes[i], original_image_shape)
+            full_mask, full_prob = utils.unmold_mask(masks[i], boxes[i], original_image_shape, mask_confidence)
             full_masks.append(full_mask)
             full_probs.append(full_prob)
 
@@ -2485,7 +2486,8 @@ class MaskRCNN():
 
         return boxes, class_ids, scores, full_masks, full_probs
 
-    def detect(self, images, verbose=0):
+    def detect(self, images, mask_confidence=0.5, verbose=0):
+        # Added mask_confidence by Zhaiyu Chen
         """Runs the detection pipeline.
 
         images: List of images, potentially of different sizes.
@@ -2534,7 +2536,7 @@ class MaskRCNN():
             final_rois, final_class_ids, final_scores, final_masks, final_probs =\
                 self.unmold_detections(detections[i], mrcnn_mask[i],
                                        image.shape, molded_images[i].shape,
-                                       windows[i])
+                                       windows[i], mask_confidence)
             results.append({
                 "rois": final_rois,
                 "class_ids": final_class_ids,
