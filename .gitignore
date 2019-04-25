@@ -9,7 +9,10 @@ pycocotools/
 .swp
 _todo_*
 _res/
+_complex/
 *.h5
 *.pth
 results/
 images/
+polygon/_complex/adjustment.py
+polygon/_complex/shp.py
