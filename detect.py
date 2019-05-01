@@ -232,6 +232,8 @@ for file_name in file_names:
         overlay_mask = np.zeros((masks.shape[:-1]), dtype=bool)
         for i in range(masks.shape[-1]):
             overlay_mask += masks[:, :, i]
+        overlay_mask = overlay_mask.astype("uint8")
+        overlay_mask = overlay_mask * 255
         cv2.imwrite(OUTPUT_DIR + file_name, overlay_mask)
 
 print("------------All Done!------------")
