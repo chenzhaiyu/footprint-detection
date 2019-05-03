@@ -11,6 +11,7 @@ _todo_*
 _res/
 _complex/
 *.h5
+.ipynb_checkpoints/*
 *.pth
 results/
 images/
