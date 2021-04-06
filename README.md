@@ -2,7 +2,7 @@
 
 Building footprint detection from satellite/aerial images with Mask R-CNN and image matting (KNN matting, closed-form matting and Grabcut).
 
-![overview](.\overview.png)
+![overview](./overview.png)
 
 ## Usage
 
